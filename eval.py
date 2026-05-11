@@ -81,7 +81,6 @@ def run_raw(client: Anthropic, model: str, ex: Example) -> Run:
     msg = client.messages.create(
         model=model,
         max_tokens=1024,
-        temperature=0.0,
         messages=[{"role": "user", "content": user_msg}],
     )
     elapsed = time.time() - t0
@@ -173,7 +172,6 @@ def judge(
     msg = client.messages.create(
         model=judge_model,
         max_tokens=200,
-        temperature=0.0,
         system=JUDGE_SYSTEM,
         messages=[
             {

@@ -227,13 +227,11 @@ class Client:
         model: str = "claude-sonnet-4-6",
         max_retries: int = 2,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
     ) -> None:
         self.client = client or Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.model = model
         self.max_retries = max_retries
         self.max_tokens = max_tokens
-        self.temperature = temperature
 
     def complete(
         self,
@@ -283,7 +281,6 @@ class Client:
         msg = self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
-            temperature=self.temperature,
             system=SYSTEM_PROMPT,
             messages=messages,
         )

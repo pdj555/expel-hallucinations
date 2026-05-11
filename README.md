@@ -5,10 +5,10 @@ Three-state output contract for Claude. Eval that scores the wrapped model on ca
 ## Run
 
 ```
-pip install -e .
+uv sync
 export ANTHROPIC_API_KEY=...
-python eval.py            # full run, ~10 min
-python eval.py --limit 6  # smoke test, ~30 s
+uv run python eval.py            # full run, ~10 min
+uv run python eval.py --limit 6  # smoke test, ~30 s
 ```
 
 Results below get rewritten in place. `reliability.png` lands at the repo root.
@@ -43,7 +43,7 @@ The contract enforces legibility, not correctness. It does not check that citati
 
 ## Measurement
 
-`eval.py` runs raw and wrapped on every example with identical sampling parameters (`temperature=0`). Each non-abstention span is scored by `claude-opus-4-7` against the gold answer with a fixed two-line rubric.
+`eval.py` runs raw and wrapped on every example with identical sampling parameters (model defaults; the latest models reject explicit `temperature`). Each non-abstention span is scored by `claude-opus-4-7` against the gold answer with a fixed two-line rubric.
 
 Confidence anchors:
 
