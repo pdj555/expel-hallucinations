@@ -1,9 +1,9 @@
 """A three-state output contract enforced around the Anthropic SDK.
 
 Every assistant span is one of:
-  Cited(text, source)     — entailed by a labeled source provided to the model
-  Inference(text, conf)   — model judgment with explicit confidence in [0, 1]
-  Abstention(text)        — model declines, with a brief reason
+  Cited(text, source)     : entailed by a labeled source provided to the model
+  Inference(text, conf)   : model judgment with explicit confidence in [0, 1]
+  Abstention(text)        : model declines, with a brief reason
 
 Anything outside these tags is a parse error. The wrapper retries the model
 with a correction prompt up to `max_retries` times; on persistent failure it
@@ -81,7 +81,9 @@ _SPAN_RE = re.compile(
 )
 
 
-def parse_response(text: str, *, allowed_sources: Sequence[str] | None = None) -> list[Span]:
+def parse_response(
+    text: str, *, allowed_sources: Sequence[str] | None = None
+) -> list[Span]:
     """Parse a model reply into a list of typed spans.
 
     Raises ParseError on:
@@ -257,7 +259,10 @@ class Client:
                     break
                 messages.append({"role": "assistant", "content": reply})
                 messages.append(
-                    {"role": "user", "content": CORRECTION_PROMPT.format(error=last_error)}
+                    {
+                        "role": "user",
+                        "content": CORRECTION_PROMPT.format(error=last_error),
+                    }
                 )
                 continue
             return CompletedResponse(

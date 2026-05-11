@@ -347,7 +347,11 @@ def bootstrap_ci(
     arr = np.asarray(values, dtype=float)
     samples = rng.choice(arr, size=(n, arr.size), replace=True)
     means = samples.mean(axis=1)
-    return float(arr.mean()), float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
+    return (
+        float(arr.mean()),
+        float(np.percentile(means, 2.5)),
+        float(np.percentile(means, 97.5)),
+    )
 
 
 def compute_metrics(scored: list[ScoredSpan]) -> Metrics:
@@ -409,7 +413,13 @@ def plot_reliability(
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.plot([0, 1], [0, 1], color="gray", linestyle="--", label="perfect calibration")
     nz = bin_n > 0
-    ax.scatter(bin_conf[nz], bin_acc[nz], s=20 + 6 * bin_n[nz], color="C0", label="bin (size = n)")
+    ax.scatter(
+        bin_conf[nz],
+        bin_acc[nz],
+        s=20 + 6 * bin_n[nz],
+        color="C0",
+        label="bin (size = n)",
+    )
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_xlabel("mean predicted confidence")
@@ -422,7 +432,7 @@ def plot_reliability(
 
 
 def reliability_ascii(scored: list[ScoredSpan], *, n_bins: int = 10) -> str:
-    """ASCII fallback so a terminal-only reviewer can still see the shape."""
+    """ASCII fallback for terminal viewing."""
     judged = [s for s in scored if s.correct is not None]
     if not judged:
         return "(no judged spans)"
@@ -439,7 +449,7 @@ def reliability_ascii(scored: list[ScoredSpan], *, n_bins: int = 10) -> str:
         c = float(confs[mask].mean())
         a = float(correct[mask].mean())
         bar = "#" * int(round(a * 20))
-        lines.append(f"{bins[b]:.1f}-{bins[b+1]:.1f} {m:3d}  {c:.2f}  {a:.2f} |{bar}")
+        lines.append(f"{bins[b]:.1f}-{bins[b + 1]:.1f} {m:3d}  {c:.2f}  {a:.2f} |{bar}")
     return "\n".join(lines)
 
 
@@ -461,13 +471,21 @@ def render_results(
     n_examples: int,
     n_contract_failures: int,
 ) -> str:
-    h_raw = [1.0 if s.correct is False else 0.0 for s in raw_scored if s.correct is not None]
-    h_wr = [1.0 if s.correct is False else 0.0 for s in wrapped_scored if s.correct is not None]
+    h_raw = [
+        1.0 if s.correct is False else 0.0 for s in raw_scored if s.correct is not None
+    ]
+    h_wr = [
+        1.0 if s.correct is False else 0.0
+        for s in wrapped_scored
+        if s.correct is not None
+    ]
     h_raw_mean, h_raw_lo, h_raw_hi = bootstrap_ci(h_raw)
     h_wr_mean, h_wr_lo, h_wr_hi = bootstrap_ci(h_wr)
 
     lines: list[str] = []
-    lines.append(f"_N examples: {n_examples}; contract failures: {n_contract_failures}_")
+    lines.append(
+        f"_N examples: {n_examples}; contract failures: {n_contract_failures}_"
+    )
     lines.append("")
     lines.append("| metric | raw | wrapped |")
     lines.append("|---|---|---|")
@@ -476,10 +494,16 @@ def render_results(
         f"{h_raw_mean:.3f} [{h_raw_lo:.3f}, {h_raw_hi:.3f}] | "
         f"{h_wr_mean:.3f} [{h_wr_lo:.3f}, {h_wr_hi:.3f}] |"
     )
-    lines.append(f"| ECE (10 bins) | {raw_metrics.ece:.3f} | {wrapped_metrics.ece:.3f} |")
+    lines.append(
+        f"| ECE (10 bins) | {raw_metrics.ece:.3f} | {wrapped_metrics.ece:.3f} |"
+    )
     lines.append(f"| Brier | {raw_metrics.brier:.3f} | {wrapped_metrics.brier:.3f} |")
-    lines.append(f"| accuracy on judged spans | {raw_metrics.accuracy:.3f} | {wrapped_metrics.accuracy:.3f} |")
-    lines.append(f"| spans (judged / abstain) | {raw_metrics.n_scored} / {raw_metrics.n_abstentions} | {wrapped_metrics.n_scored} / {wrapped_metrics.n_abstentions} |")
+    lines.append(
+        f"| accuracy on judged spans | {raw_metrics.accuracy:.3f} | {wrapped_metrics.accuracy:.3f} |"
+    )
+    lines.append(
+        f"| spans (judged / abstain) | {raw_metrics.n_scored} / {raw_metrics.n_abstentions} | {wrapped_metrics.n_scored} / {wrapped_metrics.n_abstentions} |"
+    )
     lines.append("")
     lines.append("Selective accuracy (wrapped) at coverage:")
     lines.append("")
@@ -488,7 +512,9 @@ def render_results(
     for cov, acc in wrapped_metrics.selective_accuracy.items():
         lines.append(f"| {int(cov * 100)}% | {acc:.3f} |")
     lines.append("")
-    lines.append(f"Reliability diagram (wrapped): ![reliability]({reliability_path.name})")
+    lines.append(
+        f"Reliability diagram (wrapped): ![reliability]({reliability_path.name})"
+    )
     lines.append("")
     lines.append("ASCII reliability (wrapped):")
     lines.append("")
@@ -521,7 +547,9 @@ def write_results_section(work_md_path: Path, results_md: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=None, help="run on first N examples")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="run on first N examples"
+    )
     parser.add_argument("--model", default="claude-sonnet-4-6")
     parser.add_argument("--judge-model", default="claude-opus-4-7")
     parser.add_argument("--out", type=Path, default=Path("WORK.md"))
@@ -612,7 +640,7 @@ def _build_dataset() -> list[Example]:
                     "def find(xs, target):\n    lo, hi = 0, len(xs)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if xs[mid] < target: lo = mid + 1\n        else: hi = mid\n    return lo if lo < len(xs) and xs[lo] == target else -1",
                 ),
             ),
-            gold_answer="O(log n) — it is a binary search.",
+            gold_answer="O(log n). it is a binary search.",
             answerable=True,
         ),
         Example(
@@ -641,7 +669,7 @@ def _build_dataset() -> list[Example]:
             domain="code",
             question="How many tests does this module have?",
             sources=(_src("snippet.py", "def add(a, b):\n    return a + b"),),
-            gold_answer="UNANSWERABLE — no tests are shown in the source.",
+            gold_answer="UNANSWERABLE. no tests are shown in the source.",
             answerable=False,
         ),
         Example(
@@ -649,7 +677,7 @@ def _build_dataset() -> list[Example]:
             domain="code",
             question="Who is the author of this file?",
             sources=(_src("file.py", "def f(x): return x"),),
-            gold_answer="UNANSWERABLE — no author metadata is given.",
+            gold_answer="UNANSWERABLE. no author metadata is given.",
             answerable=False,
         ),
         Example(
@@ -657,7 +685,7 @@ def _build_dataset() -> list[Example]:
             domain="code",
             question="What does `sub` return?",
             sources=(_src("calc.py", "def add(a, b):\n    return a + b"),),
-            gold_answer="UNANSWERABLE — `sub` is not defined in the source provided.",
+            gold_answer="UNANSWERABLE. `sub` is not defined in the source provided.",
             answerable=False,
         ),
         Example(
@@ -670,14 +698,16 @@ def _build_dataset() -> list[Example]:
                     "def find(xs, target):\n    lo, hi = 0, len(xs)",
                 ),
             ),
-            gold_answer="UNANSWERABLE — `target` has no default; it is a positional parameter.",
+            gold_answer="UNANSWERABLE. `target` has no default; it is a positional parameter.",
             answerable=False,
         ),
         Example(
             id="code-10",
             domain="code",
             question="What does `greet(name)` return for `name='Ada'`?",
-            sources=(_src("hello.py", "def greet(name):\n    return f'Hello, {name}!'"),),
+            sources=(
+                _src("hello.py", "def greet(name):\n    return f'Hello, {name}!'"),
+            ),
             gold_answer="The string 'Hello, Ada!'",
             answerable=True,
         ),
@@ -685,8 +715,10 @@ def _build_dataset() -> list[Example]:
             id="code-11",
             domain="code",
             question="Does `greet` raise on `None`?",
-            sources=(_src("hello.py", "def greet(name):\n    return f'Hello, {name}!'"),),
-            gold_answer="No — it returns the string 'Hello, None!'.",
+            sources=(
+                _src("hello.py", "def greet(name):\n    return f'Hello, {name}!'"),
+            ),
+            gold_answer="No. it returns the string 'Hello, None!'.",
             answerable=True,
         ),
         Example(
@@ -699,7 +731,7 @@ def _build_dataset() -> list[Example]:
                     "class User:\n    def __init__(self, name): self.name = name\n    def __eq__(self, other): return self.name == other.name",
                 ),
             ),
-            gold_answer="No — only __init__ and __eq__ are shown. (In Python, defining __eq__ without __hash__ makes the class unhashable, but the source itself does not implement __hash__.)",
+            gold_answer="No. only __init__ and __eq__ are shown. (In Python, defining __eq__ without __hash__ makes the class unhashable, but the source itself does not implement __hash__.)",
             answerable=True,
         ),
         Example(
@@ -725,15 +757,20 @@ def _build_dataset() -> list[Example]:
                     "@app.route('/users', methods=['POST'])\ndef create_user(): ...",
                 ),
             ),
-            gold_answer="UNANSWERABLE — no auth decorator or middleware is shown.",
+            gold_answer="UNANSWERABLE. no auth decorator or middleware is shown.",
             answerable=False,
         ),
         Example(
             id="code-15",
             domain="code",
             question="What dependencies does this project have?",
-            sources=(_src("setup.py", "from setuptools import setup\nsetup(name='x', version='1.0')"),),
-            gold_answer="UNANSWERABLE — no `install_requires` is given.",
+            sources=(
+                _src(
+                    "setup.py",
+                    "from setuptools import setup\nsetup(name='x', version='1.0')",
+                ),
+            ),
+            gold_answer="UNANSWERABLE. no `install_requires` is given.",
             answerable=False,
         ),
         Example(
@@ -748,8 +785,12 @@ def _build_dataset() -> list[Example]:
             id="code-17",
             domain="code",
             question="What is the maximum recursion depth this function can handle?",
-            sources=(_src("rec.py", "def fact(n):\n    return 1 if n <= 1 else n * fact(n-1)"),),
-            gold_answer="UNANSWERABLE — bounded by Python's recursion limit (default 1000) and stack size, neither of which is shown in the source.",
+            sources=(
+                _src(
+                    "rec.py", "def fact(n):\n    return 1 if n <= 1 else n * fact(n-1)"
+                ),
+            ),
+            gold_answer="UNANSWERABLE. bounded by Python's recursion limit (default 1000) and stack size, neither of which is shown in the source.",
             answerable=False,
         ),
     ]
@@ -759,7 +800,10 @@ def _build_dataset() -> list[Example]:
             domain="rag",
             question="In what year was the company founded?",
             sources=(
-                _src("about.txt", "Acme Corp was founded in 1923 in Springfield by Joan Acme."),
+                _src(
+                    "about.txt",
+                    "Acme Corp was founded in 1923 in Springfield by Joan Acme.",
+                ),
             ),
             gold_answer="1923.",
             answerable=True,
@@ -769,7 +813,10 @@ def _build_dataset() -> list[Example]:
             domain="rag",
             question="Who founded the company?",
             sources=(
-                _src("about.txt", "Acme Corp was founded in 1923 in Springfield by Joan Acme."),
+                _src(
+                    "about.txt",
+                    "Acme Corp was founded in 1923 in Springfield by Joan Acme.",
+                ),
             ),
             gold_answer="Joan Acme.",
             answerable=True,
@@ -779,9 +826,12 @@ def _build_dataset() -> list[Example]:
             domain="rag",
             question="How many employees does the company currently have?",
             sources=(
-                _src("about.txt", "Acme Corp was founded in 1923 in Springfield by Joan Acme."),
+                _src(
+                    "about.txt",
+                    "Acme Corp was founded in 1923 in Springfield by Joan Acme.",
+                ),
             ),
-            gold_answer="UNANSWERABLE — the passage does not state employee count.",
+            gold_answer="UNANSWERABLE. the passage does not state employee count.",
             answerable=False,
         ),
         Example(
@@ -807,7 +857,7 @@ def _build_dataset() -> list[Example]:
                     "Under standard atmospheric pressure (1 atm), water boils at 100 °C.",
                 ),
             ),
-            gold_answer="UNANSWERABLE — the passage discusses only water.",
+            gold_answer="UNANSWERABLE. the passage discusses only water.",
             answerable=False,
         ),
         Example(
@@ -846,7 +896,7 @@ def _build_dataset() -> list[Example]:
                     "Plan A: $500 annual deductible, $5000 out-of-pocket maximum, 80/20 coinsurance.",
                 ),
             ),
-            gold_answer="UNANSWERABLE — dental coverage is not mentioned.",
+            gold_answer="UNANSWERABLE. dental coverage is not mentioned.",
             answerable=False,
         ),
         Example(
@@ -856,7 +906,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "conf.txt",
-                    "ICML 2024 will be held from July 21–27 in Vienna, Austria.",
+                    "ICML 2024 will be held from July 21-27 in Vienna, Austria.",
                 ),
             ),
             gold_answer="July 21, 2024.",
@@ -869,7 +919,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "conf.txt",
-                    "ICML 2024 will be held from July 21–27 in Vienna, Austria.",
+                    "ICML 2024 will be held from July 21-27 in Vienna, Austria.",
                 ),
             ),
             gold_answer="Vienna, Austria.",
@@ -882,10 +932,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "conf.txt",
-                    "ICML 2024 will be held from July 21–27 in Vienna, Austria.",
+                    "ICML 2024 will be held from July 21-27 in Vienna, Austria.",
                 ),
             ),
-            gold_answer="UNANSWERABLE — the passage does not mention fees.",
+            gold_answer="UNANSWERABLE. the passage does not mention fees.",
             answerable=False,
         ),
         Example(
@@ -895,10 +945,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "conf.txt",
-                    "ICML 2024 will be held from July 21–27 in Vienna, Austria.",
+                    "ICML 2024 will be held from July 21-27 in Vienna, Austria.",
                 ),
             ),
-            gold_answer="UNANSWERABLE — no speakers are named in the passage.",
+            gold_answer="UNANSWERABLE. no speakers are named in the passage.",
             answerable=False,
         ),
         Example(
@@ -924,7 +974,7 @@ def _build_dataset() -> list[Example]:
                     "We introduce FastSearch, a method that achieves a 3.2x speedup over the strongest prior baseline on the SearchBench suite, while matching its top-1 accuracy.",
                 ),
             ),
-            gold_answer="UNANSWERABLE — the abstract refers to 'the strongest prior baseline' without naming it.",
+            gold_answer="UNANSWERABLE. the abstract refers to 'the strongest prior baseline' without naming it.",
             answerable=False,
         ),
         Example(
@@ -950,7 +1000,7 @@ def _build_dataset() -> list[Example]:
                     "We introduce FastSearch, a method that achieves a 3.2x speedup over the strongest prior baseline on the SearchBench suite, while matching its top-1 accuracy.",
                 ),
             ),
-            gold_answer="UNANSWERABLE — the title is not in the excerpt.",
+            gold_answer="UNANSWERABLE. the title is not in the excerpt.",
             answerable=False,
         ),
         Example(
@@ -975,7 +1025,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "weather_api/paris",
-                    "{\"city\": \"Paris\", \"temp_c\": 14, \"condition\": \"light rain\"}",
+                    '{"city": "Paris", "temp_c": 14, "condition": "light rain"}',
                 ),
             ),
             gold_answer="14 °C with light rain.",
@@ -988,10 +1038,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "weather_api/paris",
-                    "{\"city\": \"Paris\", \"temp_c\": 14, \"condition\": \"light rain\"}",
+                    '{"city": "Paris", "temp_c": 14, "condition": "light rain"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — the tool returned data only for Paris, not Berlin.",
+            gold_answer="UNANSWERABLE. the tool returned data only for Paris, not Berlin.",
             answerable=False,
         ),
         Example(
@@ -1001,7 +1051,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "user_db/lookup",
-                    "{\"id\": 42, \"name\": \"Ada Lovelace\", \"email\": \"ada@example.com\"}",
+                    '{"id": 42, "name": "Ada Lovelace", "email": "ada@example.com"}',
                 ),
             ),
             gold_answer="ada@example.com.",
@@ -1014,10 +1064,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "user_db/lookup",
-                    "{\"id\": 42, \"name\": \"Ada Lovelace\", \"email\": \"ada@example.com\"}",
+                    '{"id": 42, "name": "Ada Lovelace", "email": "ada@example.com"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — phone is not in the returned record.",
+            gold_answer="UNANSWERABLE. phone is not in the returned record.",
             answerable=False,
         ),
         Example(
@@ -1027,7 +1077,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "orders/1001",
-                    "{\"id\": 1001, \"items\": 3, \"total_usd\": 47.50, \"status\": \"shipped\"}",
+                    '{"id": 1001, "items": 3, "total_usd": 47.50, "status": "shipped"}',
                 ),
             ),
             gold_answer="$47.50.",
@@ -1040,10 +1090,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "orders/1001",
-                    "{\"id\": 1001, \"items\": 3, \"total_usd\": 47.50, \"status\": \"shipped\"}",
+                    '{"id": 1001, "items": 3, "total_usd": 47.50, "status": "shipped"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — no ship date is in the returned record.",
+            gold_answer="UNANSWERABLE. no ship date is in the returned record.",
             answerable=False,
         ),
         Example(
@@ -1053,7 +1103,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "auth/status",
-                    "{\"user_id\": 42, \"active\": true, \"last_login\": \"2024-09-12T10:33:00Z\"}",
+                    '{"user_id": 42, "active": true, "last_login": "2024-09-12T10:33:00Z"}',
                 ),
             ),
             gold_answer="Yes, active.",
@@ -1066,7 +1116,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "auth/status",
-                    "{\"user_id\": 42, \"active\": true, \"last_login\": \"2024-09-12T10:33:00Z\"}",
+                    '{"user_id": 42, "active": true, "last_login": "2024-09-12T10:33:00Z"}',
                 ),
             ),
             gold_answer="2024-09-12 at 10:33 UTC.",
@@ -1079,10 +1129,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "auth/status",
-                    "{\"user_id\": 42, \"active\": true, \"last_login\": \"2024-09-12T10:33:00Z\"}",
+                    '{"user_id": 42, "active": true, "last_login": "2024-09-12T10:33:00Z"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — no IP is in the returned record.",
+            gold_answer="UNANSWERABLE. no IP is in the returned record.",
             answerable=False,
         ),
         Example(
@@ -1092,7 +1142,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "quote/AAPL",
-                    "{\"symbol\": \"AAPL\", \"price\": 178.42, \"currency\": \"USD\", \"as_of\": \"2024-09-12T15:30:00Z\"}",
+                    '{"symbol": "AAPL", "price": 178.42, "currency": "USD", "as_of": "2024-09-12T15:30:00Z"}',
                 ),
             ),
             gold_answer="$178.42 USD (as of 2024-09-12 15:30 UTC).",
@@ -1105,10 +1155,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "quote/AAPL",
-                    "{\"symbol\": \"AAPL\", \"price\": 178.42, \"currency\": \"USD\", \"as_of\": \"2024-09-12T15:30:00Z\"}",
+                    '{"symbol": "AAPL", "price": 178.42, "currency": "USD", "as_of": "2024-09-12T15:30:00Z"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — open price is not in the returned data.",
+            gold_answer="UNANSWERABLE. open price is not in the returned data.",
             answerable=False,
         ),
         Example(
@@ -1118,7 +1168,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "search/q=python",
-                    "{\"query\": \"python\", \"total_hits\": 1248, \"page_size\": 20, \"page\": 1}",
+                    '{"query": "python", "total_hits": 1248, "page_size": 20, "page": 1}',
                 ),
             ),
             gold_answer="1248 results total.",
@@ -1131,10 +1181,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "search/q=python",
-                    "{\"query\": \"python\", \"total_hits\": 1248, \"page_size\": 20, \"page\": 1}",
+                    '{"query": "python", "total_hits": 1248, "page_size": 20, "page": 1}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — no result titles are in the returned data.",
+            gold_answer="UNANSWERABLE. no result titles are in the returned data.",
             answerable=False,
         ),
         Example(
@@ -1144,7 +1194,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "calendar/evt-9",
-                    "{\"id\": \"evt-9\", \"start\": \"2024-10-01T14:00:00\", \"timezone\": \"America/New_York\"}",
+                    '{"id": "evt-9", "start": "2024-10-01T14:00:00", "timezone": "America/New_York"}',
                 ),
             ),
             gold_answer="America/New_York.",
@@ -1157,10 +1207,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "calendar/evt-9",
-                    "{\"id\": \"evt-9\", \"start\": \"2024-10-01T14:00:00\", \"timezone\": \"America/New_York\"}",
+                    '{"id": "evt-9", "start": "2024-10-01T14:00:00", "timezone": "America/New_York"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — no organizer is in the returned record.",
+            gold_answer="UNANSWERABLE. no organizer is in the returned record.",
             answerable=False,
         ),
         Example(
@@ -1170,7 +1220,7 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "ship/pkg-77",
-                    "{\"tracking\": \"pkg-77\", \"status\": \"in transit\", \"eta\": \"2024-09-15\"}",
+                    '{"tracking": "pkg-77", "status": "in transit", "eta": "2024-09-15"}',
                 ),
             ),
             gold_answer="In transit, with ETA 2024-09-15.",
@@ -1183,10 +1233,10 @@ def _build_dataset() -> list[Example]:
             sources=(
                 _src(
                     "ship/pkg-77",
-                    "{\"tracking\": \"pkg-77\", \"status\": \"in transit\", \"eta\": \"2024-09-15\"}",
+                    '{"tracking": "pkg-77", "status": "in transit", "eta": "2024-09-15"}',
                 ),
             ),
-            gold_answer="UNANSWERABLE — no current location is in the returned data.",
+            gold_answer="UNANSWERABLE. no current location is in the returned data.",
             answerable=False,
         ),
     ]
