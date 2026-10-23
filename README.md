@@ -1,6 +1,6 @@
 # expel-hallucinations
 
-Three-state output contract for Claude. Eval that scores the wrapped model on calibration, not accuracy.
+Output contract for Claude with three kinds of spans: cited, inference, and abstain. Eval that scores the wrapped model on calibration, not accuracy.
 
 ## Run
 
@@ -27,7 +27,7 @@ A hallucinated claim is a span asserting `p` with stated confidence `c` such tha
 2. No source available to the model entails `p`.
 3. `c` exceeds the calibration-warranted confidence by more than threshold τ.
 
-Falsifiable per span. That's what `eval.py` does.
+Each span can be checked against this definition. That check is what `eval.py` does.
 
 ## Mechanism
 
@@ -73,9 +73,13 @@ _Run `python eval.py` to populate._
 
 Three sketches at the level an engineer could begin from.
 
-**Data curation.** Apply the wrapper to a stream of training prompts. Flag every case where the pre-wrapper response makes a claim the post-wrapper response downgrades or abstains on. Those are the cases where the model knew that it didn't know but expressed itself as if it did. Score with the same path as `eval.py`. Filter or rewrite the confirmed cases.
+### Data curation
 
-**RL reward.** Ratios matter; units don't:
+Apply the wrapper to a stream of training prompts. Flag every case where the pre-wrapper response makes a claim the post-wrapper response downgrades or abstains on. Those are the cases where the model knew that it didn't know but expressed itself as if it did. Score with the same path as `eval.py`. Filter or rewrite the confirmed cases.
+
+### RL reward
+
+Ratios matter; units don't:
 
 ```
 cited-correct                         +1
@@ -85,9 +89,11 @@ abstain on answerable                 -0.2
 fabrication (uncited, wrong, conf>τ)  -10
 ```
 
-One fabrication wipes out twenty calibrated answers. `calibration_score` is `1 - |stated - empirical|` over a rolling buffer of recent same-domain inference verdicts. Abstention rewarded enough to be a reliable escape hatch, not so much that the agent abstains on everything.
+One fabrication wipes out twenty calibrated answers. `calibration_score` is `1 - |stated - empirical|` over a rolling buffer of recent same-domain inference verdicts. Abstention is rewarded enough to be a reliable option, not so much that the agent abstains on everything.
 
-**Human feedback UI.** Labeler sees prompt, response with spans color-coded by tag, and the source(s) the model had. Three buttons per non-abstention span: correct, incorrect, underconfident. The third covers symmetric dishonesty (model said 0.4 about something it should have said 0.9 on). Inter-labeler disagreement above threshold triggers a third labeler and category review.
+### Human feedback UI
+
+Labeler sees prompt, response with spans color-coded by tag, and the source(s) the model had. Three buttons per non-abstention span: correct, incorrect, underconfident. The third covers symmetric dishonesty (model said 0.4 about something it should have said 0.9 on). Inter-labeler disagreement above threshold triggers a third labeler and category review.
 
 ## What would change my mind
 
